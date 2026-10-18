@@ -4,6 +4,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     flake-utils.url = "github:numtide/flake-utils";
+    treefmt-nix = {
+      url = "github:numtide/treefmt-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     flake-lib = {
       url = "github:jgus-org/flake-lib/v1";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -16,6 +20,7 @@
       self,
       nixpkgs,
       flake-utils,
+      treefmt-nix,
       flake-lib,
     }:
     let
@@ -32,6 +37,10 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        treefmtEval = treefmt-nix.lib.evalModule pkgs {
+          projectRootFile = "flake.nix";
+          programs.nixfmt.enable = true;
+        };
         yato-src = pkgs.fetchFromGitHub {
           inherit (source) owner repo;
           rev = pin.sourceRev;
@@ -47,6 +56,9 @@
             buildAttr = "yato-src";
           };
         };
+
+        formatter = treefmtEval.config.build.wrapper;
+        checks.formatting = treefmtEval.config.build.check self;
       }
     );
 }
